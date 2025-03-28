@@ -1,10 +1,10 @@
 from flask import request, jsonify
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+import time
+from models import db, Draft
 
 def init_routes(app):
-    # Google Drive API setup (assumes user token is valid)
     def get_drive_service(token):
         creds = Credentials(token=token)
         return build("drive", "v3", credentials=creds)
@@ -16,7 +16,12 @@ def init_routes(app):
         if not content:
             return jsonify({"error": "No content provided"}), 400
 
-        # Use user's access token from Firebase
+        # Save draft to PostgreSQL
+        draft = Draft(user_id=user["uid"], content=content)
+        db.session.add(draft)
+        db.session.commit()
+
+        # Save to Google Drive
         token = request.headers.get("Authorization").split("Bearer ")[1]
         drive_service = get_drive_service(token)
 

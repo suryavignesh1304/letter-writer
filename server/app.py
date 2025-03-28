@@ -1,17 +1,21 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import jwt
-from google.oauth2 import id_token
-from google.auth.transport import requests
 from config import Config
+from models import db, init_app as init_db
 from routes import init_routes
+import jwt
 
 app = Flask(__name__)
 app.config.from_object(Config)
-CORS(app)
+CORS(app, origins=["http://localhost:3000"])  # Allow front-end origin
 
-# Verify Firebase token
+init_db(app)  # Initialize SQLAlchemy
+init_routes(app)  # Initialize routes
+
+# Middleware to verify Firebase token
 def verify_token(token):
+    from google.auth.transport import requests
+    from google.oauth2 import id_token
     try:
         decoded = id_token.verify_firebase_token(token, requests.Request())
         return decoded
@@ -29,8 +33,6 @@ def auth_middleware():
         if not user:
             return jsonify({"error": "Invalid token"}), 401
         request.user = user
-
-init_routes(app)
 
 if __name__ == "__main__":
     app.run(debug=app.config["DEBUG"], port=5000)
